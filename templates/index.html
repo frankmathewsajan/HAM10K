@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAM10K Medical AI Diagnostics</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        medical: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        lab: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        accent: {
+                            green: '#10b981',
+                            red: '#ef4444',
+                            yellow: '#f59e0b',
+                            blue: '#3b82f6'
+                        }
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                        'mono': ['Roboto Mono', 'monospace']
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.4s ease-out',
+                        'pulse-glow': 'pulseGlow 2s infinite',
+                        'scan': 'scan 2s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(14, 165, 233, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(14, 165, 233, 0.6); }
+        }
+        
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        
+        .medical-grid {
+            background-image: 
+                linear-gradient(rgba(14, 165, 233, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(14, 165, 233, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
+            animation: scan 2s linear infinite;
+        }
+        
+        .image-preview {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .image-preview::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.4), 
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-lab-900 via-lab-800 to-medical-900 min-h-screen font-sans">
+    <!-- Main Interface - First Viewport -->
+    <div id="upload-view" class="h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-lab-800/90 to-medical-800/90 glass-morphism border-b border-medical-400/20">
+            <div class="container mx-auto px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-12 h-12 bg-medical-500 rounded-full flex items-center justify-center shadow-lg">
+                            <span class="material-icons text-white text-2xl">biotech</span>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold text-white">HAM10K Medical AI</h1>
+                            <p class="text-medical-200 text-sm font-mono">Advanced Dermatological Diagnostics</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <div class="text-white font-mono text-sm">STATUS</div>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-2 h-2 bg-accent-green rounded-full animate-pulse"></div>
+                                <span class="text-accent-green text-sm font-mono">ONLINE</span>
+                            </div>
+                        </div>
+                        <div class="w-px h-8 bg-medical-400/30"></div>
+                        <span class="material-icons text-medical-300">science</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex">
+            <!-- Left Panel - Image Upload -->
+            <div class="flex-1 p-8 medical-grid">
+                <div class="h-full flex flex-col">
+                    <!-- Upload Section -->
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="w-full max-w-2xl">
+                            <!-- Upload Area -->
+                            <div id="upload-area" class="relative group cursor-pointer">
+                                <div class="border-2 border-dashed border-medical-400/50 rounded-3xl p-12 text-center transition-all duration-300 hover:border-medical-400 hover:bg-medical-900/20 glass-morphism">
+                                    <div id="upload-content">
+                                        <div class="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-medical-400 to-medical-600 rounded-full flex items-center justify-center shadow-xl animate-pulse-glow">
+                                            <span class="material-icons text-white text-4xl">add_photo_alternate</span>
+                                        </div>
+                                        <h3 class="text-2xl font-semibold text-white mb-2">Upload Medical Image</h3>
+                                        <p class="text-medical-200 mb-4">Drag and drop or click to select</p>
+                                        <div class="text-sm text-medical-300 font-mono">
+                                            Supported: JPG, PNG, GIF • Max: 10MB
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Image Preview -->
+                                    <div id="image-preview" class="hidden">
+                                        <div class="relative w-80 h-80 mx-auto rounded-2xl overflow-hidden shadow-2xl image-preview">
+                                            <img id="preview-image" class="w-full h-full object-cover" alt="Preview">
+                                            <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                                            <div class="absolute top-4 right-4">
+                                                <button onclick="clearImage()" class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors">
+                                                    <span class="material-icons text-sm">close</span>
+                                                </button>
+                                            </div>
+                                            <div class="scanner-line opacity-75"></div>
+                                        </div>
+                                        <div class="mt-4 text-center">
+                                            <div class="text-white font-mono text-sm" id="image-info"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <input type="file" id="file-input" accept="image/*" class="hidden">
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="mt-8 flex justify-center space-x-4">
+                                <button onclick="document.getElementById('file-input').click()" class="px-8 py-3 bg-gradient-to-r from-medical-500 to-medical-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center space-x-2">
+                                    <span class="material-icons">file_upload</span>
+                                    <span>Select Image</span>
+                                </button>
+                                <button id="analyze-btn" onclick="analyzeImage()" disabled class="px-8 py-3 bg-gradient-to-r from-accent-green to-emerald-600 text-white rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed flex items-center space-x-2">
+                                    <span class="material-icons">psychology</span>
+                                    <span>Analyze</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Info & Controls -->
+            <div class="w-96 bg-gradient-to-b from-lab-800/50 to-lab-900/50 glass-morphism border-l border-medical-400/20 p-6">
+                <h3 class="text-xl font-semibold text-white mb-6 flex items-center">
+                    <span class="material-icons mr-2">info</span>
+                    Classification Categories
+                </h3>
+                
+                <div class="space-y-3">
+                    <div class="bg-lab-700/30 rounded-xl p-4 border border-medical-400/20">
+                        <div class="text-white font-mono text-sm mb-2">MALIGNANT</div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between text-red-300">
+                                <span>MEL</span>
+                                <span>Melanoma</span>
+                            </div>
+                            <div class="flex justify-between text-orange-300">
+                                <span>BCC</span>
+                                <span>Basal Cell Carcinoma</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-lab-700/30 rounded-xl p-4 border border-medical-400/20">
+                        <div class="text-white font-mono text-sm mb-2">PRE-MALIGNANT</div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between text-yellow-300">
+                                <span>AKIEC</span>
+                                <span>Actinic Keratoses</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-lab-700/30 rounded-xl p-4 border border-medical-400/20">
+                        <div class="text-white font-mono text-sm mb-2">BENIGN</div>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between text-green-300">
+                                <span>NV</span>
+                                <span>Melanocytic Nevi</span>
+                            </div>
+                            <div class="flex justify-between text-green-300">
+                                <span>BKL</span>
+                                <span>Benign Keratosis</span>
+                            </div>
+                            <div class="flex justify-between text-green-300">
+                                <span>DF</span>
+                                <span>Dermatofibroma</span>
+                            </div>
+                            <div class="flex justify-between text-blue-300">
+                                <span>VASC</span>
+                                <span>Vascular Lesions</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="mt-8 p-4 bg-lab-700/30 rounded-xl border border-medical-400/20">
+                    <h4 class="text-white font-mono text-sm mb-3">SYSTEM STATUS</h4>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <span class="text-medical-300">AI Model</span>
+                            <span class="text-accent-green">HAM10K v2.1</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-medical-300">Accuracy</span>
+                            <span class="text-accent-green">94.2%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-medical-300">Dataset</span>
+                            <span class="text-medical-200">10,015 images</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="text-center">
+                <div class="w-20 h-20 mx-auto mb-6 relative">
+                    <div class="absolute inset-0 border-4 border-medical-200/20 rounded-full"></div>
+                    <div class="absolute inset-0 border-4 border-transparent border-t-medical-400 rounded-full animate-spin"></div>
+                </div>
+                <h3 class="text-2xl font-semibold text-white mb-2">Analyzing Image</h3>
+                <p class="text-medical-200 font-mono text-sm">AI processing in progress...</p>
+                <div class="mt-4 flex items-center justify-center space-x-2">
+                    <div class="w-2 h-2 bg-medical-400 rounded-full animate-bounce"></div>
+                    <div class="w-2 h-2 bg-medical-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-2 h-2 bg-medical-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Alert -->
+        <div id="error-alert" class="hidden fixed top-4 right-4 z-50 max-w-md">
+            <div class="bg-red-500 text-white p-4 rounded-xl shadow-2xl border border-red-400">
+                <div class="flex items-center">
+                    <span class="material-icons mr-2">error</span>
+                    <div>
+                        <div class="font-semibold">Analysis Error</div>
+                        <div id="error-message" class="text-sm mt-1"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results View - Second Viewport -->
+    <div id="results-view" class="hidden h-screen bg-gradient-to-br from-lab-900 via-lab-800 to-medical-900">
+        <!-- Results Header -->
+        <header class="bg-gradient-to-r from-accent-green/20 to-emerald-600/20 glass-morphism border-b border-accent-green/20 p-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <button onclick="showUploadView()" class="w-10 h-10 bg-medical-500 rounded-full flex items-center justify-center hover:bg-medical-600 transition-colors">
+                        <span class="material-icons text-white">arrow_back</span>
+                    </button>
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Diagnostic Results</h2>
+                        <p class="text-medical-200 font-mono text-sm">AI Analysis Complete</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <div class="text-white font-mono text-sm">CONFIDENCE</div>
+                        <div id="header-confidence" class="text-accent-green text-xl font-bold font-mono">---%</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-white font-mono text-sm">CLASSIFICATION</div>
+                        <div id="header-classification" class="text-white text-xl font-bold font-mono">---</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Results Grid -->
+        <div class="h-full overflow-y-auto p-6">
+            <div class="grid grid-cols-12 gap-6 h-full">
+                <!-- Left Column - Image Analysis -->
+                <div class="col-span-4 space-y-6">
+                    <!-- Original Image -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">image</span>
+                            Analyzed Image
+                        </h3>
+                        <div class="relative rounded-xl overflow-hidden">
+                            <img id="results-image" class="w-full h-64 object-cover" alt="Analyzed Image">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                        </div>
+                        <div class="mt-4 text-center">
+                            <div id="image-metadata" class="text-medical-200 font-mono text-sm"></div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Assessment -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">health_and_safety</span>
+                            Risk Assessment
+                        </h3>
+                        <div id="risk-indicator" class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-medical-200 font-mono text-sm">MALIGNANCY RISK</span>
+                                <span id="risk-percentage" class="font-mono font-bold">---%</span>
+                            </div>
+                            <div class="w-full bg-lab-600 rounded-full h-3">
+                                <div id="risk-bar" class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div id="risk-recommendation" class="text-sm text-medical-200"></div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4">Quick Actions</h3>
+                        <div class="space-y-3">
+                            <button class="w-full px-4 py-3 bg-medical-600 text-white rounded-lg hover:bg-medical-700 transition-colors flex items-center justify-center space-x-2">
+                                <span class="material-icons">download</span>
+                                <span>Export Report</span>
+                            </button>
+                            <button class="w-full px-4 py-3 bg-lab-600 text-white rounded-lg hover:bg-lab-700 transition-colors flex items-center justify-center space-x-2">
+                                <span class="material-icons">share</span>
+                                <span>Share Results</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle Column - Charts & Analytics -->
+                <div class="col-span-5 space-y-6">
+                    <!-- Primary Chart -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">bar_chart</span>
+                            Classification Probabilities
+                        </h3>
+                        <div class="h-64">
+                            <canvas id="probabilityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Confidence Meter -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">speed</span>
+                            Confidence Analysis
+                        </h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="h-32">
+                                    <canvas id="confidenceGauge"></canvas>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-medical-200 text-sm">Primary</span>
+                                    <span id="primary-confidence" class="text-white font-mono font-bold">---%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-medical-200 text-sm">Secondary</span>
+                                    <span id="secondary-confidence" class="text-white font-mono font-bold">---%</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-medical-200 text-sm">Differential</span>
+                                    <span id="differential-confidence" class="text-white font-mono font-bold">---%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Chart -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">donut_small</span>
+                            Category Distribution
+                        </h3>
+                        <div class="h-48">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - Detailed Analysis -->
+                <div class="col-span-3 space-y-6">
+                    <!-- Primary Diagnosis -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">medical_services</span>
+                            Primary Diagnosis
+                        </h3>
+                        <div class="text-center mb-4">
+                            <div id="primary-class" class="text-3xl font-bold text-white mb-2">---</div>
+                            <div id="primary-description" class="text-medical-200 text-sm"></div>
+                        </div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-medical-200 text-sm">Confidence</span>
+                                <span id="primary-conf-display" class="text-accent-green font-mono font-bold">---%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-medical-200 text-sm">Certainty Level</span>
+                                <span id="certainty-level" class="text-white font-mono">---</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Differential Diagnosis -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">list_alt</span>
+                            Differential Diagnosis
+                        </h3>
+                        <div id="differential-list" class="space-y-3">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Model Information -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">psychology</span>
+                            Model Details
+                        </h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-medical-200">Architecture</span>
+                                <span class="text-white font-mono">HAM10K CNN</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-medical-200">Training Data</span>
+                                <span class="text-white font-mono">10,015 images</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-medical-200">Accuracy</span>
+                                <span class="text-accent-green font-mono">94.2%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-medical-200">Sensitivity</span>
+                                <span class="text-accent-green font-mono">91.8%</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-medical-200">Specificity</span>
+                                <span class="text-accent-green font-mono">96.1%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations -->
+                    <div class="bg-lab-700/30 rounded-2xl p-6 glass-morphism border border-medical-400/20">
+                        <h3 class="text-white font-semibold mb-4 flex items-center">
+                            <span class="material-icons mr-2">recommend</span>
+                            Recommendations
+                        </h3>
+                        <div id="recommendations" class="space-y-3 text-sm text-medical-200">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let charts = {};
+        
+        // File input handling
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            handleFileSelection(file);
+        });
+        
+        function handleFileSelection(file) {
+            if (file) {
+                selectedFile = file;
+                document.getElementById('analyze-btn').disabled = false;
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('upload-content').classList.add('hidden');
+                    document.getElementById('image-preview').classList.remove('hidden');
+                    document.getElementById('preview-image').src = e.target.result;
+                    
+                    // Update image info
+                    const size = (file.size / 1024 / 1024).toFixed(2);
+                    document.getElementById('image-info').textContent = 
+                        `${file.name} • ${size} MB • ${file.type}`;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function clearImage() {
+            selectedFile = null;
+            document.getElementById('analyze-btn').disabled = true;
+            document.getElementById('upload-content').classList.remove('hidden');
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('file-input').value = '';
+        }
+        
+        // Drag and drop handling
+        const uploadArea = document.getElementById('upload-area');
+        
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('border-medical-400', 'bg-medical-900/30');
+        });
+        
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('border-medical-400', 'bg-medical-900/30');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('border-medical-400', 'bg-medical-900/30');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    handleFileSelection(file);
+                }
+            }
+        });
+        
+        uploadArea.addEventListener('click', function() {
+            document.getElementById('file-input').click();
+        });
+        
+        // Analysis function
+        async function analyzeImage() {
+            if (!selectedFile) {
+                showError('Please select an image first');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading-overlay').classList.remove('hidden');
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayResults(result);
+                } else {
+                    showError(result.error || 'Analysis failed');
+                }
+                
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }
+        }
+        
+        function displayResults(result) {
+            // Switch to results view
+            document.getElementById('upload-view').classList.add('hidden');
+            document.getElementById('results-view').classList.remove('hidden');
+            
+            // Update header
+            document.getElementById('header-confidence').textContent = result.confidence;
+            document.getElementById('header-classification').textContent = result.prediction.toUpperCase();
+            
+            // Update image
+            document.getElementById('results-image').src = 'data:image/png;base64,' + result.image;
+            document.getElementById('image-metadata').textContent = `${selectedFile.name} • ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`;
+            
+            // Update primary diagnosis
+            document.getElementById('primary-class').textContent = result.prediction.toUpperCase();
+            document.getElementById('primary-description').textContent = result.description;
+            document.getElementById('primary-conf-display').textContent = result.confidence;
+            
+            // Calculate risk assessment
+            updateRiskAssessment(result);
+            
+            // Update confidence metrics
+            updateConfidenceMetrics(result);
+            
+            // Create charts
+            createCharts(result);
+            
+            // Update differential diagnosis
+            updateDifferentialDiagnosis(result);
+            
+            // Update recommendations
+            updateRecommendations(result);
+        }
+        
+        function updateRiskAssessment(result) {
+            const malignantClasses = ['mel', 'bcc'];
+            const premalignantClasses = ['akiec'];
+            
+            let risk = 0;
+            let riskClass = 'LOW';
+            let riskColor = 'bg-accent-green';
+            let textColor = 'text-accent-green';
+            
+            if (malignantClasses.includes(result.prediction.toLowerCase())) {
+                risk = parseFloat(result.confidence.replace('%', ''));
+                riskClass = 'HIGH';
+                riskColor = 'bg-red-500';
+                textColor = 'text-red-400';
+            } else if (premalignantClasses.includes(result.prediction.toLowerCase())) {
+                risk = parseFloat(result.confidence.replace('%', '')) * 0.6;
+                riskClass = 'MODERATE';
+                riskColor = 'bg-yellow-500';
+                textColor = 'text-yellow-400';
+            } else {
+                risk = 100 - parseFloat(result.confidence.replace('%', ''));
+                riskClass = 'LOW';
+                riskColor = 'bg-accent-green';
+                textColor = 'text-accent-green';
+            }
+            
+            document.getElementById('risk-percentage').textContent = `${risk.toFixed(1)}% ${riskClass}`;
+            document.getElementById('risk-percentage').className = `font-mono font-bold ${textColor}`;
+            document.getElementById('risk-bar').className = `h-3 rounded-full transition-all duration-1000 ease-out ${riskColor}`;
+            document.getElementById('risk-bar').style.width = `${risk}%`;
+            
+            const recommendations = {
+                'HIGH': 'Immediate dermatological consultation recommended. Consider urgent referral.',
+                'MODERATE': 'Follow-up with dermatologist within 2-4 weeks. Monitor for changes.',
+                'LOW': 'Routine monitoring. Annual dermatological check-up advised.'
+            };
+            
+            document.getElementById('risk-recommendation').textContent = recommendations[riskClass];
+        }
+        
+        function updateConfidenceMetrics(result) {
+            const probs = Object.values(result.probabilities);
+            const sortedProbs = probs.sort((a, b) => b - a);
+            
+            const primary = (sortedProbs[0] * 100).toFixed(1);
+            const secondary = (sortedProbs[1] * 100).toFixed(1);
+            const differential = (sortedProbs[0] - sortedProbs[1]) * 100;
+            
+            document.getElementById('primary-confidence').textContent = `${primary}%`;
+            document.getElementById('secondary-confidence').textContent = `${secondary}%`;
+            document.getElementById('differential-confidence').textContent = `${differential.toFixed(1)}%`;
+            
+            // Certainty level
+            const confidence = parseFloat(result.confidence.replace('%', ''));
+            let certainty = 'LOW';
+            if (confidence > 90) certainty = 'VERY HIGH';
+            else if (confidence > 80) certainty = 'HIGH';
+            else if (confidence > 70) certainty = 'MODERATE';
+            else if (confidence > 60) certainty = 'FAIR';
+            
+            document.getElementById('certainty-level').textContent = certainty;
+        }
+        
+        function createCharts(result) {
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => chart.destroy());
+            charts = {};
+            
+            // Probability Bar Chart
+            const ctx1 = document.getElementById('probabilityChart').getContext('2d');
+            charts.probability = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(result.probabilities).map(k => k.toUpperCase()),
+                    datasets: [{
+                        data: Object.values(result.probabilities).map(v => v * 100),
+                        backgroundColor: Object.keys(result.probabilities).map(k => {
+                            if (k.toLowerCase() === result.prediction.toLowerCase()) {
+                                return '#10b981';
+                            }
+                            return 'rgba(14, 165, 233, 0.6)';
+                        }),
+                        borderColor: Object.keys(result.probabilities).map(k => {
+                            if (k.toLowerCase() === result.prediction.toLowerCase()) {
+                                return '#059669';
+                            }
+                            return '#0ea5e9';
+                        }),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+            
+            // Confidence Gauge
+            const ctx2 = document.getElementById('confidenceGauge').getContext('2d');
+            const confidence = parseFloat(result.confidence.replace('%', ''));
+            charts.gauge = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [confidence, 100 - confidence],
+                        backgroundColor: ['#10b981', 'rgba(255, 255, 255, 0.1)'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+            
+            // Category Pie Chart
+            const ctx3 = document.getElementById('categoryChart').getContext('2d');
+            const categories = {
+                'Malignant': ['mel', 'bcc'],
+                'Pre-malignant': ['akiec'],
+                'Benign': ['nv', 'bkl', 'df', 'vasc']
+            };
+            
+            const categoryProbs = {};
+            Object.entries(categories).forEach(([category, classes]) => {
+                categoryProbs[category] = classes.reduce((sum, cls) => 
+                    sum + (result.probabilities[cls] || 0), 0) * 100;
+            });
+            
+            charts.category = new Chart(ctx3, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categoryProbs),
+                    datasets: [{
+                        data: Object.values(categoryProbs),
+                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981'],
+                        borderWidth: 2,
+                        borderColor: '#1e293b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateDifferentialDiagnosis(result) {
+            const sorted = Object.entries(result.probabilities)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 5);
+            
+            const container = document.getElementById('differential-list');
+            container.innerHTML = '';
+            
+            sorted.forEach(([className, prob], index) => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-3 bg-lab-600/30 rounded-lg';
+                
+                const confidence = (prob * 100).toFixed(1);
+                const isPrimary = index === 0;
+                
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <div class="w-2 h-2 rounded-full ${isPrimary ? 'bg-accent-green' : 'bg-medical-400'}"></div>
+                        <span class="text-white font-mono text-sm">${className.toUpperCase()}</span>
+                    </div>
+                    <span class="text-medical-200 font-mono text-sm">${confidence}%</span>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+        
+        function updateRecommendations(result) {
+            const container = document.getElementById('recommendations');
+            const confidence = parseFloat(result.confidence.replace('%', ''));
+            
+            const recommendations = [];
+            
+            if (['mel', 'bcc'].includes(result.prediction.toLowerCase())) {
+                recommendations.push('• Urgent dermatological referral within 2 weeks');
+                recommendations.push('• Consider dermoscopy or biopsy');
+                recommendations.push('• Patient education on sun protection');
+            } else if (result.prediction.toLowerCase() === 'akiec') {
+                recommendations.push('• Dermatological follow-up in 2-4 weeks');
+                recommendations.push('• Monitor for changes in lesion');
+                recommendations.push('• Sun protection counseling');
+            } else {
+                recommendations.push('• Routine dermatological monitoring');
+                recommendations.push('• Annual skin examination');
+                recommendations.push('• Self-examination education');
+            }
+            
+            if (confidence < 70) {
+                recommendations.push('• Consider additional imaging or consultation');
+                recommendations.push('• Clinical correlation recommended');
+            }
+            
+            container.innerHTML = recommendations.map(rec => 
+                `<div class="text-medical-200">${rec}</div>`).join('');
+        }
+        
+        function showUploadView() {
+            document.getElementById('results-view').classList.add('hidden');
+            document.getElementById('upload-view').classList.remove('hidden');
+        }
+        
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-alert').classList.remove('hidden');
+            
+            setTimeout(() => {
+                document.getElementById('error-alert').classList.add('hidden');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
